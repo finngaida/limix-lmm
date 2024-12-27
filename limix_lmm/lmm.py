@@ -1,4 +1,8 @@
 from time import time
+import numpy as np
+import scipy as sp
+import scipy.stats as st
+import scipy.linalg as la
 
 from .lmm_core import LMMCore
 
@@ -76,8 +80,6 @@ class LMM(LMMCore):
     """
 
     def __init__(self, y, F, Ki_dot=None):
-        import scipy as sp
-
         if F is None:
             F = sp.ones((y.shape[0], 1))
         self.y = y
@@ -88,9 +90,6 @@ class LMM(LMMCore):
 
     def _fit_null(self):
         """ Internal functon. Fits the null model """
-        import scipy as sp
-        import scipy.linalg as la
-
         if self.Ki_dot is None:
             self.Kiy = self.y
             self.KiF = self.F
@@ -102,6 +101,7 @@ class LMM(LMMCore):
         self.yKiy = sp.dot(self.y[:, 0], self.Kiy[:, 0])
         # calc beta_F0 and s20
         self.A0i = la.inv(self.FKiF)
+        self.A0i += np.eye(self.A0i.shape[0]) * 1e-6
         self.beta_F0 = sp.dot(self.A0i, self.FKiy)
         self.s20 = (self.yKiy - sp.dot(self.FKiy[:, 0], self.beta_F0[:, 0])) / self.df
 
@@ -123,9 +123,6 @@ class LMM(LMMCore):
         beta : ndarray
             variant effect szies
         """
-        import scipy as sp
-        import scipy.stats as st
-
         t0 = time()
         # precompute some stuff
         if self.Ki_dot is None:
@@ -135,11 +132,13 @@ class LMM(LMMCore):
         GKiy = sp.dot(G.T, self.Kiy[:, 0])
         GKiG = sp.einsum("ij,ij->j", G, KiG)
         FKiG = sp.dot(self.F.T, KiG)
+        FKiG = (FKiG - np.mean(FKiG, axis=0)) / np.std(FKiG, axis=0)
 
         # Let us denote the inverse of Areml as
         # Ainv = [[A0i + m mt / n, m], [mT, n]]
         A0iFKiG = sp.dot(self.A0i, FKiG)
-        n = 1.0 / (GKiG - sp.einsum("ij,ij->j", FKiG, A0iFKiG))
+        denom = np.maximum(GKiG - sp.einsum("ij,ij->j", FKiG, A0iFKiG), 1e-6)
+        n = 1.0 / denom
         M = -n * A0iFKiG
         self.beta_F = self.beta_F0 + M * sp.dot(M.T, self.FKiy[:, 0]) / n
         self.beta_F += M * GKiy
