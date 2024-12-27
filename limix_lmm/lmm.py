@@ -132,7 +132,7 @@ class LMM(LMMCore):
         GKiy = sp.dot(G.T, self.Kiy[:, 0])
         GKiG = sp.einsum("ij,ij->j", G, KiG)
         FKiG = sp.dot(self.F.T, KiG)
-        FKiG = (FKiG - np.mean(FKiG, axis=0)) / np.std(FKiG, axis=0)
+        FKiG = (FKiG - np.mean(FKiG, axis=0)) / (np.std(FKiG, axis=0) + 1e-6)
 
         # Let us denote the inverse of Areml as
         # Ainv = [[A0i + m mt / n, m], [mT, n]]

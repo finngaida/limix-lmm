@@ -1,4 +1,7 @@
 from time import time
+import scipy as sp
+import scipy.stats as st
+import numpy as np
 
 from .util import calc_Ai_beta_s2, hatodot
 
@@ -173,8 +176,6 @@ class LMMCore:
     """
 
     def __init__(self, y, F, Ki_dot=None):
-        import scipy as sp
-
         if F is None:
             F = sp.ones((y.shape[0], 1))
         self.y = y
@@ -185,8 +186,6 @@ class LMMCore:
 
     def _fit_null(self):
         """ Internal functon. Fits the null model """
-        import scipy as sp
-
         if self.Ki_dot is None:
             self.Kiy = self.y
             self.KiF = self.F
@@ -218,9 +217,6 @@ class LMMCore:
         verbose : bool
             verbose flag.
         """
-        import scipy as sp
-        import scipy.stats as st
-
         t0 = time()
         ntests = int(G.shape[1] / step)
         if Inter is None:
@@ -313,11 +309,11 @@ class LMMCore:
         -------
         beta_ste : ndarray
         """
-        import scipy as sp
-        import scipy.stats as st
-
         beta = self.getBetaSNP()
         pv = self.getPv()
         z = sp.sign(beta) * sp.sqrt(st.chi2(1).isf(pv))
+        # Return beta if z contains any zeros to avoid division by zero
+        if np.any(z == 0):
+            return beta
         ste = beta / z
         return ste
